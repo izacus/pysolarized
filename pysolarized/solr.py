@@ -59,7 +59,7 @@ class Solr():
         # Check document language and dispatch to correct core
         url = _get_url(core_url, "update")
         try:
-            response = requests.get(url, data=json_command, headers={'Content-Type': 'application/json'})
+            response = requests.post(url, data=json_command, headers={'Content-Type': 'application/json'})
             response.raise_for_status()
         except requests.RequestException as e:
             logger.error("Failed to send update to Solr endpoint [%s]: %s", core_url, e, exc_info=True)
