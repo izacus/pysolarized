@@ -25,6 +25,10 @@ class SolrResults:
         self.highlights = {}        # Highligts for found documents
 
 
+class SolrException(BaseException):
+    pass
+
+
 class Solr():
     _add_batch = []
     _shards = None
@@ -53,14 +57,24 @@ class Solr():
         """
 
         # Check document language and dispatch to correct core
-        url = _get_url(core_url, "update/json/")
+        url = _get_url(core_url, "update")
         try:
-            response = requests.get(url, data=json_command, headers={'Content-Type':'application/json'})
+            response = requests.get(url, data=json_command, headers={'Content-Type': 'application/json'})
             response.raise_for_status()
-        except requests.exceptions.HTTPError as e:
+        except requests.RequestException as e:
             logger.error("Failed to send update to Solr endpoint [%s]: %s", core_url, e, exc_info=True)
-            return False
+            raise SolrException("Failed to send command to Solr [%s]: %s" % (core_url, e,))
         return True
+
+    def _send_solr_query(self, request_url, query):
+        try:
+            response = requests.post(request_url, data=query)
+            response.raise_for_status()
+            results = response.json()
+        except requests.RequestException as e:
+            logger.error("Failed to connect to Solr server: %s!", e, exc_info=True)
+            return None
+        return results.json()
 
     def add(self, documents):
         """
@@ -134,20 +148,24 @@ class Solr():
             self._shards = ",".join(endpoints)
         return self._shards
 
-    def query(self, query, filters=None, sort=None, start=0, rows=30):
+    def query(self, query, filters=None, columns=None, sort=None, start=0, rows=30):
         """
         Queries Solr and returns results
 
         query - Text query to search for
         filters - dictionary of filters to apply when searching in form of { "field":"filter_value" }
+        columns - columns to return, list of strings
         sort - list of fields to sort on in format of ["field asc", "field desc", ... ]
         start - start number of first result (used in pagination)
         rows - number of rows to return (used for pagination, defaults to 30)
         """
 
+        if not columns:
+            columns = ["*", "score"]
+
         fields = [("q", query),
-                  ("json.nl", "map"),       # Return facets as JSON objects
-                  ("fl", "*,score"),        # Return score along with results
+                  ("json.nl", "map"),           # Return facets as JSON objects
+                  ("fl", ",".join(columns)),    # Return score along with results
                   ("start", str(start)),
                   ("rows", str(rows))]
 
@@ -167,19 +185,14 @@ class Solr():
         # Do request to Solr server to default endpoint (other cores will be queried with shard functionality)
         assert self.default_endpoint in self.endpoints
         request_url = _get_url(self.endpoints[self.default_endpoint], "select")
-
-        try:
-            response = requests.post(request_url, data=fields)
-            response.raise_for_status()
-            results = response.json()
-        except requests.exceptions.HTTPError as e:
-            logger.error("Failed to connect to Solr server: %s!", e, exc_info=True)
+        results = self._send_solr_query(request_url, fields)
+        if not results:
             return None
 
         assert "responseHeader" in results
         # Check for response status
         if not results.get("responseHeader").get("status") == 0:
-            logger.error("Server error while retrieving results: %s", response.data)
+            logger.error("Server error while retrieving results: %s", results)
             return None
 
         assert "response" in results
