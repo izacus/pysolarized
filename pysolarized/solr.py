@@ -1,10 +1,9 @@
 import json
 import logging
 import types
-import urllib
-import urllib2
 import urlparse
 import itertools
+import requests
 
 SOLR_ADD_BATCH = 200 # Number of documents to send in batch when adding
 logger = logging.getLogger("pysolarized")
@@ -54,11 +53,11 @@ class Solr():
         """
 
         # Check document language and dispatch to correct core
-        url = urlparse.urljoin(core_url, "update/json/")
+        url = _get_url(core_url, "update/json/")
         try:
-            request = urllib2.Request(url, json_command, {'Content-Type':'application/json'})
-            response = urllib2.urlopen(request).read()
-        except urllib2.HTTPError as e:
+            response = requests.get(url, data=json_command, headers={'Content-Type':'application/json'})
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
             logger.error("Failed to send update to Solr endpoint [%s]: %s", core_url, e, exc_info=True)
             return False
         return True
@@ -122,7 +121,6 @@ class Solr():
         for core in self.endpoints:
             self._send_solr_command(self.endpoints[core], "{ \"optimize\": {} }")
 
-
     def _get_shards(self):
         """
         Returns comma separated list of configured Solr cores
@@ -148,11 +146,10 @@ class Solr():
         """
 
         fields = [("q", query),
-                  ("json.nl", "map"), # Return facets as JSON objects
-                  ("fl", "*,score"), # Return score along with results
+                  ("json.nl", "map"),       # Return facets as JSON objects
+                  ("fl", "*,score"),        # Return score along with results
                   ("start", str(start)),
-                  ("rows", str(rows))
-                 ]
+                  ("rows", str(rows))]
 
         # Use shards parameter only if there are several cores active
         if len(self.endpoints) > 1:
@@ -160,29 +157,23 @@ class Solr():
 
         # Prepare filters
         if not filters is None:
-            for filter,value in filters.items():
-                fields.append(("fq", ":".join([filter, value])))
+            for filter_field, value in filters.items():
+                fields.append(("fq", ":".join([filter_field, value])))
 
         # Append sorting parameters
         if not sort is None:
             fields.append(("sort", ",".join(sort)))
 
-        # Do request to Solr server to default endpoint (other cores will be queried over distributed shard functionality)
+        # Do request to Solr server to default endpoint (other cores will be queried with shard functionality)
         assert self.default_endpoint in self.endpoints
-        request_url = "/".join([self.endpoints[self.default_endpoint], "select/"])
-        data = urllib.urlencode([(k,v.encode('utf-8')) for k,v in fields])
+        request_url = _get_url(self.endpoints[self.default_endpoint], "select")
 
         try:
-            request = urllib2.Request(request_url, data=data, headers={'Content-Type':'application/x-www-form-urlencoded; charset=utf-8'})
-            response = urllib2.urlopen(request).read()
-        except (urllib2.HTTPError, urllib2.URLError) as e:
+            response = requests.post(request_url, data=fields)
+            response.raise_for_status()
+            results = response.json()
+        except requests.exceptions.HTTPError as e:
             logger.error("Failed to connect to Solr server: %s!", e, exc_info=True)
-            return None
-
-        try:
-            results = json.loads(response)
-        except Exception as e:
-            logger.error("Failed to parse JSON response: %s!", e, exc_info=True)
             return None
 
         assert "responseHeader" in results
@@ -209,14 +200,14 @@ class Solr():
             for type in facet_types:
                 assert type in results.get("facet_counts")
                 items = results.get("facet_counts").get(type)
-                for field,values in items.items():
+                for field, values in items.items():
                     result_obj.facets[field] = []
-                    for facet,value in values.items():
+                    for facet, value in values.items():
                         result_obj.facets[field].append((facet, value))
 
         # Process highlights
         if "highlighting" in results:
-            for key,value in results.get("highlighting").items():
+            for key, value in results.get("highlighting").items():
                 result_obj.highlights[key] = value
 
         return result_obj
