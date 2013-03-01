@@ -74,7 +74,7 @@ class Solr():
         except requests.RequestException as e:
             logger.error("Failed to connect to Solr server: %s!", e, exc_info=True)
             return None
-        return results.json()
+        return results
 
     def add(self, documents):
         """
@@ -163,24 +163,26 @@ class Solr():
         if not columns:
             columns = ["*", "score"]
 
-        fields = [("q", query),
-                  ("json.nl", "map"),           # Return facets as JSON objects
-                  ("fl", ",".join(columns)),    # Return score along with results
-                  ("start", str(start)),
-                  ("rows", str(rows))]
+        fields = {"q": query,
+                "json.nl" :"map",           # Return facets as JSON objects
+                "fl": ",".join(columns),    # Return score along with results
+                "start": str(start),
+                "rows": str(rows)}
 
         # Use shards parameter only if there are several cores active
         if len(self.endpoints) > 1:
-            fields.append(("shards", self._get_shards()))
+            fields["shards"] = self._get_shards()
 
         # Prepare filters
         if not filters is None:
+            filter_list = []
             for filter_field, value in filters.items():
-                fields.append(("fq", ":".join([filter_field, value])))
+                filter_list.append("%s:%s" % (filter_field, value))
+            fields["fq"] = " AND ".join(filter_list)
 
         # Append sorting parameters
         if not sort is None:
-            fields.append(("sort", ",".join(sort)))
+            fields["sort"] = ",".join(sort)
 
         # Do request to Solr server to default endpoint (other cores will be queried with shard functionality)
         assert self.default_endpoint in self.endpoints
