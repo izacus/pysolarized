@@ -207,18 +207,36 @@ class Solr():
 
         for doc in dict_response.get("docs", []):
             result_obj.documents.append(doc)
-
+        
         # Process facets
         if "facet_counts" in results:
-            assert "facet_fields" in results.get("facet_counts")
-            facet_types = ["facet_fields", "facet_dates", "facet_queries"]
+            facet_types = ["facet_fields", "facet_dates", "facet_ranges", "facet_queries"]
             for type in facet_types:
                 assert type in results.get("facet_counts")
                 items = results.get("facet_counts").get(type)
                 for field, values in items.items():
                     result_obj.facets[field] = []
-                    for facet, value in values.items():
-                        result_obj.facets[field].append((facet, value))
+
+                    # Range facets have results in "counts" subkey and "between/after" on top level. Flatten this.
+                    if type == "facet_ranges":
+                        if not "counts" in values:
+                            continue
+                        
+                        for facet, value in values["counts"].items():
+                            result_obj.facets[field].append((facet, value))
+
+                        if "before" in values:
+                            result_obj.facets[field].append(("before", values["before"]))
+                        
+                        if "after" in values:
+                            result_obj.facets[field].append(("after", values["after"]))        
+                    else:
+                        for facet, value in values.items():
+                            # Date facets have metadata fields between the results, skip the params, keep "before" and "after" fields for other
+                            if type == "facet_dates" and \
+                            (facet == "gap" or facet == "between" or facet == "start" or facet == "end"):
+                                continue 
+                            result_obj.facets[field].append((facet, value))
 
         # Process highlights
         if "highlighting" in results:
