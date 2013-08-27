@@ -282,7 +282,7 @@ class Solr():
             fields["shards"] = self._get_shards()
 
         assert self.default_endpoint in self.endpoints
-        request_url = _get_url(self.endpoints[self.default_endpoint], "select")
+        request_url = _get_url(self.endpoints[self.default_endpoint], "mlt")
         results = self._send_solr_query(request_url, fields)
         if not results:
             return None
