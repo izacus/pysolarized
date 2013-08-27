@@ -72,7 +72,7 @@ class testSolrQueries(unittest.TestCase):
         { "responseHeader": { "status":0, "QTime" : 45 },
           "response" : { "numFound" : 1, "start": 31,
                          "docs" : [ {"title" : "This is woot", "content" : "This isn't woot." } ]},
-          "facet_counts": { "facet_fields" : { "source" : { "newspaper" : 342 }}, "facet_dates":{},"facet_queries":{}},
+          "facet_counts": { "facet_fields" : { "source" : { "newspaper" : 342 }}, "facet_dates":{},"facet_queries":{}, "facet_ranges":{}},
           "highlighting": { "ididid" : { "content": [ "... blah blah ..."]}}}
     """
 

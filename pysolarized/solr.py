@@ -148,6 +148,57 @@ class Solr():
             self._shards = ",".join(endpoints)
         return self._shards
 
+    def _parse_response(self, results):
+        """
+        Parses result dictionary into a SolrResults object
+        """
+
+        dict_response = results.get("response")
+        result_obj = SolrResults()
+        result_obj.query_time = results.get("responseHeader").get("QTime", None)
+        result_obj.results_count = dict_response.get("numFound", 0)
+        result_obj.start_index = dict_response.get("start", 0)
+
+        for doc in dict_response.get("docs", []):
+            result_obj.documents.append(doc)
+
+        # Process facets
+        if "facet_counts" in results:
+            facet_types = ["facet_fields", "facet_dates", "facet_ranges", "facet_queries"]
+            for type in facet_types:
+                assert type in results.get("facet_counts")
+                items = results.get("facet_counts").get(type)
+                for field, values in items.items():
+                    result_obj.facets[field] = []
+
+                    # Range facets have results in "counts" subkey and "between/after" on top level. Flatten this.
+                    if type == "facet_ranges":
+                        if not "counts" in values:
+                            continue
+
+                        for facet, value in values["counts"].items():
+                            result_obj.facets[field].append((facet, value))
+
+                        if "before" in values:
+                            result_obj.facets[field].append(("before", values["before"]))
+
+                        if "after" in values:
+                            result_obj.facets[field].append(("after", values["after"]))
+                    else:
+                        for facet, value in values.items():
+                            # Date facets have metadata fields between the results, skip the params, keep "before" and "after" fields for other
+                            if type == "facet_dates" and \
+                            (facet == "gap" or facet == "between" or facet == "start" or facet == "end"):
+                                continue
+                            result_obj.facets[field].append((facet, value))
+
+        # Process highlights
+        if "highlighting" in results:
+            for key, value in results.get("highlighting").items():
+                result_obj.highlights[key] = value
+
+        return result_obj
+
     def query(self, query, filters=None, columns=None, sort=None, start=0, rows=30):
         """
         Queries Solr and returns results
@@ -198,49 +249,51 @@ class Solr():
             return None
 
         assert "response" in results
-        dict_response = results.get("response")
 
-        result_obj = SolrResults()
-        result_obj.query_time = results.get("responseHeader").get("QTime", None)
-        result_obj.results_count = dict_response.get("numFound", 0)
-        result_obj.start_index = dict_response.get("start", 0)
+        result_obj = self._parse_response(results)
+        return result_obj
 
-        for doc in dict_response.get("docs", []):
-            result_obj.documents.append(doc)
-        
-        # Process facets
-        if "facet_counts" in results:
-            facet_types = ["facet_fields", "facet_dates", "facet_ranges", "facet_queries"]
-            for type in facet_types:
-                assert type in results.get("facet_counts")
-                items = results.get("facet_counts").get(type)
-                for field, values in items.items():
-                    result_obj.facets[field] = []
+    def more_like_this(self, query, fields, columns=None, start=0, rows=30):
+        """
+        Retrieves "more like this" results for a passed query document
 
-                    # Range facets have results in "counts" subkey and "between/after" on top level. Flatten this.
-                    if type == "facet_ranges":
-                        if not "counts" in values:
-                            continue
-                        
-                        for facet, value in values["counts"].items():
-                            result_obj.facets[field].append((facet, value))
+        query - query for a document on which to base similar documents
+        fields - fields on which to base similarity estimation (either comma delimited string or a list)
+        columns - columns to return (list of strings)
+        start - start number for first result (used in pagination)
+        rows - number of rows to return (used for pagination, defaults to 30)
+        """
+        if isinstance(fields, basestring):
+            mlt_fields = fields
+        else:
+            mlt_fields = ",".join(fields)
 
-                        if "before" in values:
-                            result_obj.facets[field].append(("before", values["before"]))
-                        
-                        if "after" in values:
-                            result_obj.facets[field].append(("after", values["after"]))        
-                    else:
-                        for facet, value in values.items():
-                            # Date facets have metadata fields between the results, skip the params, keep "before" and "after" fields for other
-                            if type == "facet_dates" and \
-                            (facet == "gap" or facet == "between" or facet == "start" or facet == "end"):
-                                continue 
-                            result_obj.facets[field].append((facet, value))
+        if columns is None:
+            columns = ["*", "score"]
 
-        # Process highlights
-        if "highlighting" in results:
-            for key, value in results.get("highlighting").items():
-                result_obj.highlights[key] = value
+        fields = {'q' : query,
+                  'json.nl': 'map',
+                  'mlt.fl': mlt_fields,
+                  'fl': ",".join(columns),
+                  'start': str(start),
+                  'rows': str(rows)}
 
+        if len(self.endpoints) > 1:
+            fields["shards"] = self._get_shards()
+
+        assert self.default_endpoint in self.endpoints
+        request_url = _get_url(self.endpoints[self.default_endpoint], "select")
+        results = self._send_solr_query(request_url, fields)
+        if not results:
+            return None
+
+        assert "responseHeader" in results
+        # Check for response status
+        if not results.get("responseHeader").get("status") == 0:
+            logger.error("Server error while retrieving results: %s", results)
+            return None
+
+        assert "response" in results
+
+        result_obj = self._parse_response(results)
         return result_obj
