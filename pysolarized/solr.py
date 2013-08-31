@@ -29,7 +29,7 @@ class SolrException(BaseException):
     pass
 
 
-class Solr():
+class Solr(object):
     _add_batch = []
     _shards = None
 
@@ -40,6 +40,11 @@ class Solr():
         if not endpoints:
             logger.warning("Faulty Solr configuration, SOLR will not be available!")
             return
+
+        self.endpoints = None
+        self.default_endpoint = None
+        self._shards = None
+        self._add_batch = list()
 
         if isinstance(endpoints, basestring):
             self.endpoints = {'default': endpoints}

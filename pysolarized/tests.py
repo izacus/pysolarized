@@ -105,14 +105,16 @@ class testSolrQueries(unittest.TestCase):
                              rows=rows)
 
         self.assertEquals(self.query_url, "%s/select" % (url,))
-        expected = [('q', query),
-                    ('json.nl', 'map'),
-                    ('fl', ",".join(columns)),
-                    ('start', str(start)),
-                    ('rows', str(rows)),
-                    ('fq', '%s:%s' % (filters.keys()[0], filters.values()[0])),
-                    ('sort', ",".join(sort))]
-        self.assertListEqual(self.query_params, expected)
+        expected = { 'q': query,
+                     'json.nl': 'map',
+                     'fl': ",".join(columns),
+                     'start': str(start),
+                     'rows': str(rows),
+                     'fq': '%s:%s' % (filters.keys()[0], filters.values()[0]),
+                     'wt': 'json',
+                     'sort': ",".join(sort)}
+
+        self.assertDictEqual(self.query_params, expected)
         self.assertIsNotNone(results)
 
         # Check results
@@ -121,6 +123,34 @@ class testSolrQueries(unittest.TestCase):
         self.assertDictEqual(results.documents[0], {"title": "This is woot", "content": "This isn't woot."})
         self.assertDictEqual(results.facets, {"source": [("newspaper", 342)]})
         self.assertDictEqual(results.highlights, {'ididid': {"content": ["... blah blah ..."]}})
+
+class testMultipleCores(unittest.TestCase):
+    def setUp(self):
+        self._clear_handler()
+
+    def _command_handler(self, url, command):
+        self.req_urls.append(url)
+        self.req_commands.append(command)
+
+    def _clear_handler(self):
+        self.req_urls = []
+        self.req_commands = []
+
+    def testSolrHandlers(self):
+        document1 = {u"name": u"Joe", u"surname": u"Satriani", u"booboo": 12}
+        document2 = {u"name": u"Joanna", u"surname": u"S šuuumnikiiiič!", u"booboo": 12}
+
+        solr = Solr('http://example/solr/core1/')
+        solr._send_solr_command = self._command_handler
+        solr.add([document1])
+        solr.commit()
+
+        solr = Solr('http://example/solr/core2/')
+        solr._send_solr_command = self._command_handler
+        self.assertEquals(len(solr._add_batch), 0)
+
+        solr.add([document2])
+        solr.commit()
 
 if __name__ == "__main__":
     unittest.main()
