@@ -65,6 +65,20 @@ class TestSolrUpdates(unittest.TestCase):
                                                                                                     json.dumps(document2)))
         self.assertDictEqual({"commit": {}}, json.loads(self.req_commands[1]))
 
+    def testUpdateDocBoost(self):
+        url = "http://this.is.a.mock.url"
+        document1 = {u"name": u"Joe", u"surname": u"Satriani", u"booboo": 12}
+
+        solr = Solr({"en": url}, "en")
+        solr._send_solr_command = self._command_handler
+        solr.add(document1, boost=10.0)
+        solr.commit()
+        self.assertEquals(self.req_urls[0], url)
+        self.assertEquals(self.req_urls[1], url)
+        self.assertDictEqual({"add": {"doc": document1, "boost": 10.0}}, json.loads(self.req_commands[0]))
+        self.assertDictEqual({"commit": {}}, json.loads(self.req_commands[1]))
+
+
 
 class testSolrQueries(unittest.TestCase):
 
