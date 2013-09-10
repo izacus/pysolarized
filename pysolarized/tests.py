@@ -129,7 +129,7 @@ class testSolrQueries(unittest.TestCase):
                      'sort': ",".join(sort)}
 
         self.assertEqual(self.query_params, expected)
-        self.assertIsNotNone(results)
+        self.assertTrue(results is not None)
 
         # Check results
         self.assertEquals(results.results_count, 1)
