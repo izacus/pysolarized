@@ -30,12 +30,6 @@ class SolrException(BaseException):
 
 
 class Solr(object):
-    _add_batch = []
-    _shards = None
-
-    endpoints = None
-    default_endpoint = None
-
     def __init__(self, endpoints, default_endpoint=None):
         if not endpoints:
             logger.warning("Faulty Solr configuration, SOLR will not be available!")
