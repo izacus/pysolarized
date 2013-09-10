@@ -51,8 +51,8 @@ class TestSolrUpdates(unittest.TestCase):
 
         self.assertEquals(self.req_urls[0], url)
         self.assertEquals(self.req_urls[1], url)
-        self.assertDictEqual({"add": {"doc": document1}}, json.loads(self.req_commands[0]))
-        self.assertDictEqual({"commit": {}}, json.loads(self.req_commands[1]))
+        self.assertEqual({"add": {"doc": document1}}, json.loads(self.req_commands[0]))
+        self.assertEqual({"commit": {}}, json.loads(self.req_commands[1]))
 
         self._clear_handler()
         solr.add([document1, document2])
@@ -63,7 +63,7 @@ class TestSolrUpdates(unittest.TestCase):
 
         self.assertEquals(self.req_commands[0], u"{\"add\":{\"doc\": %s},\"add\":{\"doc\": %s}}" % (json.dumps(document1),
                                                                                                     json.dumps(document2)))
-        self.assertDictEqual({"commit": {}}, json.loads(self.req_commands[1]))
+        self.assertEqual({"commit": {}}, json.loads(self.req_commands[1]))
 
     def testUpdateDocBoost(self):
         url = "http://this.is.a.mock.url"
@@ -75,8 +75,8 @@ class TestSolrUpdates(unittest.TestCase):
         solr.commit()
         self.assertEquals(self.req_urls[0], url)
         self.assertEquals(self.req_urls[1], url)
-        self.assertDictEqual({"add": {"doc": document1, "boost": 10.0}}, json.loads(self.req_commands[0]))
-        self.assertDictEqual({"commit": {}}, json.loads(self.req_commands[1]))
+        self.assertEqual({"add": {"doc": document1, "boost": 10.0}}, json.loads(self.req_commands[0]))
+        self.assertEqual({"commit": {}}, json.loads(self.req_commands[1]))
 
 
 
@@ -128,15 +128,15 @@ class testSolrQueries(unittest.TestCase):
                      'wt': 'json',
                      'sort': ",".join(sort)}
 
-        self.assertDictEqual(self.query_params, expected)
+        self.assertEqual(self.query_params, expected)
         self.assertIsNotNone(results)
 
         # Check results
         self.assertEquals(results.results_count, 1)
         self.assertEquals(results.query_time, 45)
-        self.assertDictEqual(results.documents[0], {"title": "This is woot", "content": "This isn't woot."})
-        self.assertDictEqual(results.facets, {"source": [("newspaper", 342)]})
-        self.assertDictEqual(results.highlights, {'ididid': {"content": ["... blah blah ..."]}})
+        self.assertEqual(results.documents[0], {"title": "This is woot", "content": "This isn't woot."})
+        self.assertEqual(results.facets, {"source": [("newspaper", 342)]})
+        self.assertEqual(results.highlights, {'ididid': {"content": ["... blah blah ..."]}})
 
 class testMultipleCores(unittest.TestCase):
     def setUp(self):
