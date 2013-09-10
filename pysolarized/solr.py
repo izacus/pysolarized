@@ -1,5 +1,6 @@
 import json
 import logging
+from httpcache import CachingHTTPAdapter
 import types
 import urlparse
 import itertools
@@ -30,7 +31,7 @@ class SolrException(BaseException):
 
 
 class Solr(object):
-    def __init__(self, endpoints, default_endpoint=None):
+    def __init__(self, endpoints, default_endpoint=None, http_cache=True):
         if not endpoints:
             logger.warning("Faulty Solr configuration, SOLR will not be available!")
             return
@@ -39,6 +40,11 @@ class Solr(object):
         self.default_endpoint = None
         self._shards = None
         self._add_batch = list()
+        self.req_session = requests.Session()
+
+        if http_cache:
+            self.req_session.mount("http://", CachingHTTPAdapter())
+            self.req_session.mount("https://", CachingHTTPAdapter())
 
         if isinstance(endpoints, basestring):
             self.endpoints = {'default': endpoints}
@@ -58,7 +64,7 @@ class Solr(object):
         # Check document language and dispatch to correct core
         url = _get_url(core_url, "update")
         try:
-            response = requests.post(url, data=json_command, headers={'Content-Type': 'application/json'})
+            response = self.req_session.post(url, data=json_command, headers={'Content-Type': 'application/json'})
             response.raise_for_status()
         except requests.RequestException as e:
             logger.error("Failed to send update to Solr endpoint [%s]: %s", core_url, e, exc_info=True)
@@ -67,7 +73,7 @@ class Solr(object):
 
     def _send_solr_query(self, request_url, query):
         try:
-            response = requests.post(request_url, data=query)
+            response = self.req_session.post(request_url, data=query)
             response.raise_for_status()
             results = response.json()
         except requests.RequestException as e:
