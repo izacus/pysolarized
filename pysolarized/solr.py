@@ -30,12 +30,6 @@ class SolrException(BaseException):
 
 
 class Solr(object):
-    _add_batch = []
-    _shards = None
-
-    endpoints = None
-    default_endpoint = None
-
     def __init__(self, endpoints, default_endpoint=None):
         if not endpoints:
             logger.warning("Faulty Solr configuration, SOLR will not be available!")
@@ -81,16 +75,20 @@ class Solr(object):
             return None
         return results
 
-    def add(self, documents):
+    def add(self, documents, boost=None):
         """
         Adds documents to Solr index
         documents - Single item or list of items to add
         """
 
-        if isinstance(documents, types.ListType):
-            self._add_batch.extend(documents)
-        else:
-            self._add_batch.append(documents)
+        if not isinstance(documents, types.ListType):
+            documents = [documents]
+        documents = [{'doc': d} for d in documents]
+        if boost:
+            for d in documents:
+                d['boost'] = boost
+
+        self._add_batch.extend(documents)
 
         if len(self._add_batch) > SOLR_ADD_BATCH:
             self._addFlushBatch()
@@ -104,8 +102,8 @@ class Solr(object):
             # Create command JSONs for each of language endpoints
             for lang in self.endpoints:
                 # Append documents with languages without endpoint to default endpoint
-                document_jsons = ["\"add\":{\"doc\": " + json.dumps(data) + "}" for data in self._add_batch
-                                  if data.get("language", self.default_endpoint) == lang or (lang == self.default_endpoint and not self.endpoints.has_key(data.get("language")))]
+                document_jsons = ["\"add\":" + json.dumps(data) for data in self._add_batch
+                                  if data['doc'].get("language", self.default_endpoint) == lang or (lang == self.default_endpoint and not self.endpoints.has_key(data['doc'].get("language")))]
                 command_json = "{" + ",".join(document_jsons) + "}"
                 language_batches[lang] = command_json
             # Solr requires for documents to be sent in { "add" : { "doc" : {...} }, "add": { "doc" : { ... }, ... }
