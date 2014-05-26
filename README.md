@@ -4,6 +4,8 @@
 
 Yet another library for talking to Solr with Python with language and sharding support.
 
+Supported Python versions: 2.6, 2.7, 3.2, 3.3, 3.4
+
 ## Installation
 
 Install it from PyPi with
@@ -27,7 +29,8 @@ If there are multiple endpoints for multiple languages, you have to pass diction
 
 ```python
 import pysolarized
-solr = pysolarized.solr.Solr({"en": "http://localhost:8080/solr/core-en", "si": "http://localhost:8080/solr/core-si"}, default_endpoint="en")```
+solr = pysolarized.solr.Solr({"en": "http://localhost:8080/solr/core-en", "si": "http://localhost:8080/solr/core-si"}, default_endpoint="en")
+```
 
 ### Queries
 
