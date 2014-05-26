@@ -1,10 +1,13 @@
 import json
 import logging
 from httpcache import CachingHTTPAdapter
-import types
-import urlparse
 import itertools
 import requests
+
+try:
+    import urllib.parse as urlparse
+except ImportError:
+    import urlparse
 
 SOLR_ADD_BATCH = 200 # Number of documents to send in batch when adding
 logger = logging.getLogger("pysolarized")
@@ -46,7 +49,7 @@ class Solr(object):
             self.req_session.mount("http://", CachingHTTPAdapter())
             self.req_session.mount("https://", CachingHTTPAdapter())
 
-        if isinstance(endpoints, basestring):
+        if self._is_string(endpoints):
             self.endpoints = {'default': endpoints}
             self.default_endpoint = "default"
         else:
@@ -55,6 +58,12 @@ class Solr(object):
                 self.default_endpoint = default_endpoint
             else:
                 self.default_endpoint = endpoints[0]
+
+    def _is_string(self, obj):
+        try:
+            return isinstance(obj, basestring)  # Python 2
+        except NameError:
+            return isinstance(obj, str)         # Python 3
 
     def _send_solr_command(self, core_url, json_command):
         """
@@ -87,7 +96,7 @@ class Solr(object):
         documents - Single item or list of items to add
         """
 
-        if not isinstance(documents, types.ListType):
+        if not isinstance(documents, list):
             documents = [documents]
         documents = [{'doc': d} for d in documents]
         if boost:
@@ -103,13 +112,14 @@ class Solr(object):
         """
         Sends all waiting documents to Solr
         """
+
         if len(self._add_batch) > 0:
             language_batches = {}
             # Create command JSONs for each of language endpoints
             for lang in self.endpoints:
                 # Append documents with languages without endpoint to default endpoint
                 document_jsons = ["\"add\":" + json.dumps(data) for data in self._add_batch
-                                  if data['doc'].get("language", self.default_endpoint) == lang or (lang == self.default_endpoint and not self.endpoints.has_key(data['doc'].get("language")))]
+                                  if data['doc'].get("language", self.default_endpoint) == lang or (lang == self.default_endpoint and not self.endpoints.has_key(data['doc'].get("language", None)))]
                 command_json = "{" + ",".join(document_jsons) + "}"
                 language_batches[lang] = command_json
             # Solr requires for documents to be sent in { "add" : { "doc" : {...} }, "add": { "doc" : { ... }, ... }

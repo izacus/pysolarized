@@ -7,15 +7,15 @@ from pysolarized.solr import Solr
 class TestInstrumentation(unittest.TestCase):
 
     def testUrlJoin(self):
-        from solr import _get_url
+        from pysolarized.solr import _get_url
         url = _get_url("http://example.com", "/update/")
-        self.assertEquals(url, "http://example.com/update")
+        self.assertEqual(url, "http://example.com/update")
         url = _get_url("http://example.com/", "/update")
-        self.assertEquals(url, "http://example.com/update")
+        self.assertEqual(url, "http://example.com/update")
         url = _get_url("http://example.com", "update")
-        self.assertEquals(url, "http://example.com/update")
+        self.assertEqual(url, "http://example.com/update")
         url = _get_url("127.0.0.1", "something/something/darkside")
-        self.assertEquals(url, "127.0.0.1/something/something/darkside")
+        self.assertEqual(url, "127.0.0.1/something/something/darkside")
 
 
 class TestSolrUpdates(unittest.TestCase):
@@ -37,7 +37,7 @@ class TestSolrUpdates(unittest.TestCase):
         solr = Solr(url)
         solr._send_solr_command = self._command_handler
         solr.commit()
-        self.assertEquals(self.req_urls[0], url)
+        self.assertEqual(self.req_urls[0], url)
 
     def testUpdateDispatch(self):
         url = "http://this.is.a.failure.fail"
@@ -49,8 +49,8 @@ class TestSolrUpdates(unittest.TestCase):
         solr.add([document1])
         solr.commit()
 
-        self.assertEquals(self.req_urls[0], url)
-        self.assertEquals(self.req_urls[1], url)
+        self.assertEqual(self.req_urls[0], url)
+        self.assertEqual(self.req_urls[1], url)
         self.assertEqual({"add": {"doc": document1}}, json.loads(self.req_commands[0]))
         self.assertEqual({"commit": {}}, json.loads(self.req_commands[1]))
 
@@ -58,10 +58,10 @@ class TestSolrUpdates(unittest.TestCase):
         solr.add([document1, document2])
         solr.commit()
 
-        self.assertEquals(self.req_urls[0], url)
-        self.assertEquals(self.req_urls[1], url)
+        self.assertEqual(self.req_urls[0], url)
+        self.assertEqual(self.req_urls[1], url)
 
-        self.assertEquals(self.req_commands[0], u"{\"add\":{\"doc\": %s},\"add\":{\"doc\": %s}}" % (json.dumps(document1),
+        self.assertEqual(self.req_commands[0], u"{\"add\":{\"doc\": %s},\"add\":{\"doc\": %s}}" % (json.dumps(document1),
                                                                                                     json.dumps(document2)))
         self.assertEqual({"commit": {}}, json.loads(self.req_commands[1]))
 
@@ -73,8 +73,8 @@ class TestSolrUpdates(unittest.TestCase):
         solr._send_solr_command = self._command_handler
         solr.add(document1, boost=10.0)
         solr.commit()
-        self.assertEquals(self.req_urls[0], url)
-        self.assertEquals(self.req_urls[1], url)
+        self.assertEqual(self.req_urls[0], url)
+        self.assertEqual(self.req_urls[1], url)
         self.assertEqual({"add": {"doc": document1, "boost": 10.0}}, json.loads(self.req_commands[0]))
         self.assertEqual({"commit": {}}, json.loads(self.req_commands[1]))
 
@@ -118,13 +118,13 @@ class testSolrQueries(unittest.TestCase):
                              start=start,
                              rows=rows)
 
-        self.assertEquals(self.query_url, "%s/select" % (url,))
+        self.assertEqual(self.query_url, "%s/select" % (url,))
         expected = { 'q': query,
                      'json.nl': 'map',
                      'fl': ",".join(columns),
                      'start': str(start),
                      'rows': str(rows),
-                     'fq': '%s:%s' % (filters.keys()[0], filters.values()[0]),
+                     'fq': '%s:%s' % (list(filters.keys())[0], list(filters.values())[0]),
                      'wt': 'json',
                      'sort': ",".join(sort)}
 
@@ -132,8 +132,8 @@ class testSolrQueries(unittest.TestCase):
         self.assertTrue(results is not None)
 
         # Check results
-        self.assertEquals(results.results_count, 1)
-        self.assertEquals(results.query_time, 45)
+        self.assertEqual(results.results_count, 1)
+        self.assertEqual(results.query_time, 45)
         self.assertEqual(results.documents[0], {"title": "This is woot", "content": "This isn't woot."})
         self.assertEqual(results.facets, {"source": [("newspaper", 342)]})
         self.assertEqual(results.highlights, {'ididid': {"content": ["... blah blah ..."]}})
@@ -161,7 +161,7 @@ class testMultipleCores(unittest.TestCase):
 
         solr = Solr('http://example/solr/core2/')
         solr._send_solr_command = self._command_handler
-        self.assertEquals(len(solr._add_batch), 0)
+        self.assertEqual(len(solr._add_batch), 0)
 
         solr.add([document2])
         solr.commit()

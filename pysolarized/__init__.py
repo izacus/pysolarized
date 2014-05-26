@@ -1,4 +1,4 @@
-from solr import Solr, SolrException, SolrResults
+from .solr import Solr, SolrException, SolrResults
 from datetime import datetime
 
 __all__ = ["Solr", "SolrException", "SolrResults"]
