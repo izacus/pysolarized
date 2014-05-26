@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 import json
 import unittest
 from pysolarized.solr import Solr
@@ -41,8 +42,8 @@ class TestSolrUpdates(unittest.TestCase):
 
     def testUpdateDispatch(self):
         url = "http://this.is.a.failure.fail"
-        document1 = {u"name": u"Joe", u"surname": u"Satriani", u"booboo": 12}
-        document2 = {u"name": u"Joanna", u"surname": u"S šuuumnikiiiič!", u"booboo": 12}
+        document1 = {"name": "Joe", "surname": "Satriani", "booboo": 12}
+        document2 = {"name": "Joanna", "surname": "S šuuumnikiiiič!", "booboo": 12}
 
         solr = Solr({"en": url}, "en")
         solr._send_solr_command = self._command_handler
@@ -61,13 +62,13 @@ class TestSolrUpdates(unittest.TestCase):
         self.assertEqual(self.req_urls[0], url)
         self.assertEqual(self.req_urls[1], url)
 
-        self.assertEqual(self.req_commands[0], u"{\"add\":{\"doc\": %s},\"add\":{\"doc\": %s}}" % (json.dumps(document1),
+        self.assertEqual(self.req_commands[0], "{\"add\":{\"doc\": %s},\"add\":{\"doc\": %s}}" % (json.dumps(document1),
                                                                                                     json.dumps(document2)))
         self.assertEqual({"commit": {}}, json.loads(self.req_commands[1]))
 
     def testUpdateDocBoost(self):
         url = "http://this.is.a.mock.url"
-        document1 = {u"name": u"Joe", u"surname": u"Satriani", u"booboo": 12}
+        document1 = {"name": "Joe", "surname": "Satriani", "booboo": 12}
 
         solr = Solr({"en": url}, "en")
         solr._send_solr_command = self._command_handler
@@ -104,7 +105,7 @@ class testSolrQueries(unittest.TestCase):
         solr = Solr({"en": url}, "en")
         solr._send_solr_query = self._query_handler
 
-        query = u"what is a treeš"
+        query = "what is a treeš"
         filters = {"meaning": "deep"}
         sort = ["deepness", "wideness"]
         columns = ["title", "content"]
@@ -151,8 +152,8 @@ class testMultipleCores(unittest.TestCase):
         self.req_commands = []
 
     def testSolrHandlers(self):
-        document1 = {u"name": u"Joe", u"surname": u"Satriani", u"booboo": 12}
-        document2 = {u"name": u"Joanna", u"surname": u"S šuuumnikiiiič!", u"booboo": 12}
+        document1 = {"name": "Joe", "surname": "Satriani", "booboo": 12}
+        document2 = {"name": "Joanna", "surname": "S šuuumnikiiiič!", "booboo": 12}
 
         solr = Solr('http://example/solr/core1/')
         solr._send_solr_command = self._command_handler
