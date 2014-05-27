@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="PySolarized",
-      version="1.3",
+      version="1.4",
       description="A simple library for accessing Apache Solr full-text search engine. Allows updating and queries over"
                   "multiple cores.",
       author="Jernej Virag",
