@@ -7,6 +7,7 @@ setup(name="PySolarized",
       author="Jernej Virag",
       author_email="jernej@virag.si",
       packages=["pysolarized"],
+      url="https://github.com/izacus/pysolarized",
       license="MIT",
       install_requires=["requests", "httpcache"],
       classifiers=[
