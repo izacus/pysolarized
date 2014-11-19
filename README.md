@@ -42,7 +42,7 @@ results = solr.query("Ljubljana",
 					columns = ["id", "city_name"],
 					sort = ["city_name desc"],	
 					start = 0,
-					num_rows = 20)					
+					rows = 20)					
 ```
 
 All parameters except the query string itself are optional.
