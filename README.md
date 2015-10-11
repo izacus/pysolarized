@@ -4,7 +4,7 @@
 
 Yet another library for talking to Solr with Python with language and sharding support.
 
-Supported Python versions: 2.6, 2.7, 3.2, 3.3, 3.4
+Supported Python versions: 2.6, 2.7, 3.2, 3.3, 3.4, 3.5
 
 ## Installation
 

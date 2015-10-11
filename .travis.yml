@@ -7,6 +7,7 @@ python:
   - "3.4"
   - "3.5"
 
+sudo: false
 install: "pip install ."
 
 script: python tests.py
